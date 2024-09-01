@@ -1,0 +1,99 @@
+variables:
+  - group: jira
+  - group: ai-services
+  - group: reddit
+  - group: utils
+  - group: communication-services
+
+schedules:
+- cron:  '0 0 1 10 *'
+  displayName: Daily midnight build
+  branches:
+    include:
+    - main
+
+stages:
+  - stage: feedback
+    jobs:
+      # - job: UnitTestJob
+      #   displayName: 'Run unit tests'
+      #   # condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.SourceBranch'], 'refs/heads/develop')))
+      #   condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      #   steps:
+      #     - task: UsePythonVersion@0
+      #       inputs:
+      #         versionSpec: '3.9'
+      #         addToPath: true
+      #     - task: Bash@3
+      #       inputs:
+      #         targetType: 'inline'
+      #         script: |
+      #           python3 -m pip install --upgrade pip
+      #           pip3 install setup
+      #           pip3 install -r requirements.txt
+      #           echo "Setting PYTHONPATH"
+      #           export PYTHONPATH=$(pwd)
+      #           python3 setup.py sdist     
+      #           pip3 install ./dist/script-0.0.1.tar.gz
+      #           pip freeze > requirements.txt
+      #           pip3 install -r requirements.txt
+      #       displayName: 'Install Python dependencies'
+      #     - script: |
+      #         python -m coverage run -m unittest
+      #         python -m coverage report
+      #         coverage xml -o coverage.xml
+      #       condition: succeeded()
+      #       displayName: 'Run tests'
+      #     - task: PublishCodeCoverageResults@2
+      #       inputs:
+      #         summaryFileLocation: 'coverage.xml'
+      #       displayName: 'Publish coverage results'
+      - job: RedditDataProcessing
+        displayName: 'Run Reddit data processing script'
+        #dependsOn: UnitTestJob
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.9'
+              addToPath: true
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                python3 -m pip install --upgrade pip
+                pip3 install setup
+                pip3 install -r requirements.txt
+                echo "Setting PYTHONPATH"
+                export PYTHONPATH=$(pwd)
+                python3 setup.py sdist     
+                pip3 install ./dist/script-0.0.1.tar.gz
+                pip freeze > requirements.txt
+                pip3 install -r requirements.txt
+            displayName: 'Install Python dependencies'
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "##vso[task.setvariable variable=JIRA_EMAIL]$(email)"
+                echo "##vso[task.setvariable variable=JIRA_TOKEN]$(token)"
+                echo "##vso[task.setvariable variable=JIRA_BASE_URL]$(url)"
+                echo "##vso[task.setvariable variable=AZURE_AI_KEY]$(key)"
+                echo "##vso[task.setvariable variable=AZURE_AI_ENDPOINT]$(endpoint)"
+                echo "##vso[task.setvariable variable=REDDIT_SUBMISSION_ID]$(submission-id)"
+                echo "##vso[task.setvariable variable=REDDIT_USERNAME]$(username)"
+                echo "##vso[task.setvariable variable=REDDIT_USER_AGENT]$(user-agent)"
+                echo "##vso[task.setvariable variable=REDDIT_PASSWORD]$(password)"
+                echo "##vso[task.setvariable variable=REDDIT_CLIENT_SECRET]$(client-secret)"
+                echo "##vso[task.setvariable variable=REDDIT_CLIENT_ID]$(client-id)"
+                echo "##vso[task.setvariable variable=JIRA_ISSUE_TYPE]$(issue-type)"
+                echo "##vso[task.setvariable variable=JIRA_PROJECT_ID]$(project-id)"
+                echo "##vso[task.setvariable variable=JIRA_REPORTER_ID]$(reporter-id)"
+                echo "##vso[task.setvariable variable=EMAIL_CONNECTION_STRING]$(connection-string)"
+                echo "##vso[task.setvariable variable=EMAIL_SENDER]$(sender)"
+                echo "##vso[task.setvariable variable=EMAIL_RECIPIENTS]$(recipients)"
+            displayName: 'Export environment variables'
+          - script: |
+              cd script
+              pip3 install -r requirements.txt
+              python reddit.py  # Run the reddit.py script
+            displayName: 'Run reddit.py script'
